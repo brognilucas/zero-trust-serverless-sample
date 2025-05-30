@@ -7,7 +7,12 @@ provider:
   runtime: nodejs20.x
   stage: ${opt:stage, 'dev'}
   environment:
-    TABLE_NAME: Users-${self:provider.stage}
+    USER_TABLE_NAME: Users-${self:provider.stage}
+    RESEND_API_KEY: ${param:resendApiKey}
+    MFA_CODE_TABLE_NAME: MfaCodes-${self:provider.stage}
+    MFA_TTL_SECONDS: 300
+    JWT_SECRET: ${param:jwtSecret}
+    EMAIL_FROM: ${param:emailFrom}
 
 functions:
   signup:
@@ -17,6 +22,23 @@ functions:
           path: /signup
           method: post
     role: SignupLambdaRole
+  
+  signin:
+    handler: auth/signin.handler
+    events:
+      - httpApi:
+          path: /signin
+          method: post
+    role: SigninLambdaRole
+
+  verifyMfa:
+      handler: auth/verify-mfa.handler
+      events:
+        - httpApi:
+            path: /verify-mfa
+            method: post
+      role: VerifyMfaLambdaRole
+
 
 resources:
   Resources:
@@ -34,6 +56,22 @@ resources:
         TimeToLiveSpecification:
           AttributeName: ttl
           Enabled: false
+
+    MfaCodesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: MfaCodes-${self:provider.stage}
+        AttributeDefinitions:
+          - AttributeName: email
+            AttributeType: S
+        KeySchema:
+          - AttributeName: email
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+        TimeToLiveSpecification:
+          AttributeName: ttl
+          Enabled: true
+
 
     SignupLambdaRole:
       Type: AWS::IAM::Role
@@ -58,6 +96,58 @@ resources:
                     - dynamodb:PutItem
                   Resource:
                     - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/Users-${self:provider.stage}
+    SigninLambdaRole:
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: zero-trust-confidential-files-api-signin-lambda-role-${self:provider.stage}
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action:
+                - sts:AssumeRole
+        Policies:
+          - PolicyName: SigninLambdaPolicy
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - dynamodb:GetItem
+                  Resource:
+                    - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/Users-${self:provider.stage}
+                - Effect: Allow
+                  Action:
+                    - dynamodb:PutItem
+                  Resource:
+                    - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/MfaCodes-${self:provider.stage}
+    VerifyMfaLambdaRole:
+          Type: AWS::IAM::Role
+          Properties:
+              RoleName: zero-trust-confidential-files-api-verify-mfa-lambda-role-${self:provider.stage}
+              AssumeRolePolicyDocument:
+                Version: "2012-10-17"
+                Statement:
+                  - Effect: Allow
+                    Principal:
+                      Service:
+                        - lambda.amazonaws.com
+                    Action:
+                      - sts:AssumeRole
+              Policies:
+                - PolicyName: VerifyMfaLambdaPolicy
+                  PolicyDocument:
+                    Version: "2012-10-17"
+                    Statement:
+                      - Effect: Allow
+                        Action:
+                          - dynamodb:GetItem
+                          - dynamodb:DeleteItem
+                        Resource:
+                          - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/MfaCodes-${self:provider.stage}
 
 package:
   exclude:

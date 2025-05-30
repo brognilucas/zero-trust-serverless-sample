@@ -1,7 +1,6 @@
-import { DynamoDBClient, PutItemCommand } from "@aws-sdk/client-dynamodb";
-import FakeDatabase from '../__tests__/fakeDatabase.js';
+import { DynamoDBClient, PutItemCommand, GetItemCommand, DeleteItemCommand } from "@aws-sdk/client-dynamodb";
 
-class DatabaseService {
+export class DatabaseService {
   constructor(config = {}) {
     this.client = new DynamoDBClient({ 
       region: process.env.AWS_REGION || 'us-east-1',
@@ -11,7 +10,7 @@ class DatabaseService {
 
   async createUser(email, passwordHash) {
     const params = {
-      TableName: process.env.TABLE_NAME,
+      TableName: process.env.USER_TABLE_NAME,
       Item: {
         email: { S: email },
         passwordHash: { S: passwordHash },
@@ -22,16 +21,56 @@ class DatabaseService {
 
     await this.client.send(new PutItemCommand(params));
   }
-}
 
-
-
-export const databaseFactory = () => {
-  if (process.env.NODE_ENV === 'test') {
-    return new FakeDatabase();
+  async getUser(email) {
+    const params = {
+      TableName: process.env.USER_TABLE_NAME,
+      Key: { email: { S: email } }
+    };
+    const result = await this.client.send(new GetItemCommand(params));
+    return result.Item ? this.unmarshallDynamoItem(result.Item) : null;
   }
-  return new DatabaseService({
-    region: process.env.AWS_REGION || 'us-east-1',
-  });
+
+  async setMfaCode(email, mfaCode) {
+    const ttl = Math.floor(Date.now() / 1000) + parseInt(process.env.MFA_TTL_SECONDS, 10);
+    const params = {
+      TableName: process.env.MFA_CODE_TABLE_NAME,
+      Item: {
+        email: { S: email },
+        mfaCode: { S: mfaCode },
+        ttl: { N: ttl.toString() }
+      }
+    };
+    await this.client.send(new PutItemCommand(params));
+  }
+
+  async getMfaCode(email) {
+    const params = {
+      TableName: process.env.MFA_CODE_TABLE_NAME,
+      Key: { email: { S: email } },
+    };
+    const result = await this.client.send(new GetItemCommand(params));
+    return result.Item ? this.unmarshallDynamoItem(result.Item) : null;
+  }
+
+  async deleteMfaCode(email) {
+    const params = {
+      TableName: process.env.MFA_CODE_TABLE_NAME,
+      Key: { email: { S: email } },
+    };
+    await this.client.send(new DeleteItemCommand(params));
+  }
+
+  unmarshallDynamoItem(item) {
+    if (!item) return null;
+    
+    const result = {};
+    for (const key in item) {
+      const valueObj = item[key];
+      const dataType = Object.keys(valueObj)[0]; // ex: "S", "N", etc.
+      result[key] = valueObj[dataType];
+    }
+    return result;
+  }
 }
 
