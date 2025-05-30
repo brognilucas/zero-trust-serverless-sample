@@ -13,6 +13,17 @@ provider:
     MFA_TTL_SECONDS: 300
     JWT_SECRET: ${param:jwtSecret}
     EMAIL_FROM: ${param:emailFrom}
+    S3_UPLOAD_BUCKET_NAME: ${param:s3UploadBucketName}-${self:provider.stage}
+    S3_PRESIGNED_URL_EXPIRATION: 300
+
+  httpApi:
+    authorizers:
+      authorizer:
+        type: request
+        identitySource: "$request.header.Authorization"
+        functionName: authorizer
+        enableSimpleResponses: true
+
 
 functions:
   signup:
@@ -22,7 +33,7 @@ functions:
           path: /signup
           method: post
     role: SignupLambdaRole
-  
+
   signin:
     handler: auth/signin.handler
     events:
@@ -32,13 +43,26 @@ functions:
     role: SigninLambdaRole
 
   verifyMfa:
-      handler: auth/verify-mfa.handler
-      events:
-        - httpApi:
-            path: /verify-mfa
-            method: post
-      role: VerifyMfaLambdaRole
+    handler: auth/verify-mfa.handler
+    events:
+      - httpApi:
+          path: /verify-mfa
+          method: post
+    role: VerifyMfaLambdaRole
 
+  authorizer:
+    handler: auth/jwt-authorizer.handler
+
+  getPresignedURL:
+    handler: getPresignedURL/index.handler
+    events:
+      - httpApi:
+          path: /files/get-upload-url
+          method: post
+          authorizer: 
+            type: request
+            name: authorizer
+    role: GetPresignedURLLambdaRole
 
 resources:
   Resources:
@@ -72,7 +96,6 @@ resources:
           AttributeName: ttl
           Enabled: true
 
-
     SignupLambdaRole:
       Type: AWS::IAM::Role
       Properties:
@@ -96,6 +119,7 @@ resources:
                     - dynamodb:PutItem
                   Resource:
                     - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/Users-${self:provider.stage}
+
     SigninLambdaRole:
       Type: AWS::IAM::Role
       Properties:
@@ -124,32 +148,58 @@ resources:
                     - dynamodb:PutItem
                   Resource:
                     - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/MfaCodes-${self:provider.stage}
+
     VerifyMfaLambdaRole:
-          Type: AWS::IAM::Role
-          Properties:
-              RoleName: zero-trust-confidential-files-api-verify-mfa-lambda-role-${self:provider.stage}
-              AssumeRolePolicyDocument:
-                Version: "2012-10-17"
-                Statement:
-                  - Effect: Allow
-                    Principal:
-                      Service:
-                        - lambda.amazonaws.com
-                    Action:
-                      - sts:AssumeRole
-              Policies:
-                - PolicyName: VerifyMfaLambdaPolicy
-                  PolicyDocument:
-                    Version: "2012-10-17"
-                    Statement:
-                      - Effect: Allow
-                        Action:
-                          - dynamodb:GetItem
-                          - dynamodb:DeleteItem
-                        Resource:
-                          - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/MfaCodes-${self:provider.stage}
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: zero-trust-confidential-files-api-verify-mfa-lambda-role-${self:provider.stage}
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action:
+                - sts:AssumeRole
+        Policies:
+          - PolicyName: VerifyMfaLambdaPolicy
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - dynamodb:GetItem
+                    - dynamodb:DeleteItem
+                  Resource:
+                    - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/MfaCodes-${self:provider.stage}
+
+    GetPresignedURLLambdaRole:
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: get-presigned-url-lambda-role-${self:provider.stage}
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action:
+                - sts:AssumeRole
+        Policies:
+          - PolicyName: GetPresignedURLLambdaPolicy
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - s3:PutObject
+                  Resource:
+                    - arn:aws:s3:::${param:s3UploadBucketName}-${self:provider.stage}/*
 
 package:
   exclude:
     - .gitignore
     - .git/**
+    - __tests__/**
