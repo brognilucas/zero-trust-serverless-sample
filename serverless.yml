@@ -1,18 +1,65 @@
-# "org" ensures this Service is used with the correct Serverless Framework Access Key.
 org: lucasbrogni
-# "app" enables Serverless Framework Dashboard features and sharing them with other Services.
 app: zero-trust-file-apis
-# "service" is the name of this project. This will also be added to your AWS resource names.
 service: zero-trust-confidential-files-api
 
 provider:
   name: aws
   runtime: nodejs20.x
+  stage: ${opt:stage, 'dev'}
+  environment:
+    TABLE_NAME: Users-${self:provider.stage}
 
 functions:
-  hello:
-    handler: handler.hello
+  signup:
+    handler: auth/signup.handler
     events:
       - httpApi:
-          path: /
-          method: get
+          path: /signup
+          method: post
+    role: SignupLambdaRole
+
+resources:
+  Resources:
+    UsersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: Users-${self:provider.stage}
+        AttributeDefinitions:
+          - AttributeName: email
+            AttributeType: S
+        KeySchema:
+          - AttributeName: email
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+        TimeToLiveSpecification:
+          AttributeName: ttl
+          Enabled: false
+
+    SignupLambdaRole:
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: zero-trust-confidential-files-api-signup-lambda-role-${self:provider.stage}
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action:
+                - sts:AssumeRole
+        Policies:
+          - PolicyName: SignupLambdaPolicy
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - dynamodb:PutItem
+                  Resource:
+                    - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/Users-${self:provider.stage}
+
+package:
+  exclude:
+    - .gitignore
+    - .git/**
