@@ -46,4 +46,5 @@ export const createHandler = (database = new DatabaseService(), emailService = n
   };
 };
 
+
 export const handler = createHandler();

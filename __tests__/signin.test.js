@@ -76,13 +76,11 @@ describe('signin', () => {
     expect(res.statusCode).toBe(200);
     expect(JSON.parse(res.body).message).toBe('MFA code sent');
 
-    // Verify email was sent
     const sentEmails = emailService.getSentEmails();
     expect(sentEmails.length).toBe(1);
     expect(sentEmails[0].to).toContain(email);
     expect(sentEmails[0].subject).toBe('MFA CODE');
     
-    // Verify MFA code was stored
     const mfaRecord = await database.getMfaCode(email);
     expect(mfaRecord).toBeDefined();
     expect(mfaRecord.mfaCode).toBeDefined();
