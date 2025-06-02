@@ -1,7 +1,7 @@
-import { createHandler } from '../getPresignedURL/index.js';
+import { createHandler } from '../getPresignedURLForUpload/index.js';
 import FakeS3Service from './fakeS3Service.js';
 
-describe('getPresignedURL', () => {
+describe('getPresignedURLForUpload', () => {
   let handler;
   let s3Service;
   let originalEnv;
