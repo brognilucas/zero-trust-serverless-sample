@@ -73,6 +73,7 @@ The API provides the following secure endpoints:
 - `POST /signin` - Authenticate user and initiate MFA
 - `POST /verify-mfa` - Verify MFA code
 - `POST /files/get-upload-url` - Get presigned URL for file upload (requires authentication)
+- `GET /files/list` - Get List of files uploaded by the user
 
 All endpoints require proper authentication and authorization.
 

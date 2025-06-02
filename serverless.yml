@@ -64,6 +64,17 @@ functions:
             name: authorizer
     role: GetPresignedURLLambdaRole
 
+  getListOfUserFiles:
+    handler: getFilesForUser/index.handler
+    events:
+      - httpApi:
+          path: /files/list
+          method: get
+          authorizer: 
+            type: request
+            name: authorizer
+    role: GetListOfUserFilesLambdaRole
+
 resources:
   Resources:
     UploadBucket:
@@ -217,6 +228,29 @@ resources:
                   Resource:
                     - arn:aws:s3:::${param:s3UploadBucketName}-${self:provider.stage}/*
 
+    GetListOfUserFilesLambdaRole:
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: get-list-of-user-files-lambda-role-${self:provider.stage}
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action:
+                - sts:AssumeRole  
+        Policies:
+          - PolicyName: GetPresignedURLLambdaPolicy
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - s3:ListBucket
+                  Resource:
+                    - arn:aws:s3:::${param:s3UploadBucketName}-${self:provider.stage}
 package:
   exclude:
     - .gitignore
