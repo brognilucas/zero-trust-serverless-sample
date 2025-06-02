@@ -19,6 +19,10 @@ class FakeS3Service {
     this.presignedUrls.clear();
   }
 
+  clearFiles() {
+    this.files.clear();
+  }
+
   putFile(key, file) {
     const email = key.split('/')[0];
     const files = this.files.get(email) || [];
@@ -28,6 +32,16 @@ class FakeS3Service {
 
   getFiles(email) {
     return this.files.get(email) || [];
+  }
+
+  getDownloadPresignedUrl(email, fileName) {
+    const key = `${email}/${fileName}`;
+    if (!this.files.has(email) || !this.files.get(email).includes(key)) {
+      return null;
+    }
+    const fakeUrl = `https://fake-s3-bucket.amazonaws.com/${key}?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Expires=300`;
+    this.presignedUrls.set(key, fakeUrl);
+    return fakeUrl;
   }
 
 }

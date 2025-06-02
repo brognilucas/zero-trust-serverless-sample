@@ -75,6 +75,17 @@ functions:
             name: authorizer
     role: GetListOfUserFilesLambdaRole
 
+  getPresignedURLForDownload:
+    handler: getPresignedURLForDownload/index.handler
+    events:
+      - httpApi:
+          path: /files/get-download-url/{fileName}
+          method: get
+          authorizer: 
+            type: request
+            name: authorizer
+    role: GetPresignedURLForDownloadLambdaRole
+
 resources:
   Resources:
     UploadBucket:
@@ -207,7 +218,7 @@ resources:
     GetPresignedURLForUploadLambdaRole:
       Type: AWS::IAM::Role
       Properties:
-        RoleName: get-presigned-url-lambda-role-${self:provider.stage}
+        RoleName: get-presigned-url-for-upload-lambda-role-${self:provider.stage}
         AssumeRolePolicyDocument:
           Version: "2012-10-17"
           Statement:
@@ -251,6 +262,37 @@ resources:
                     - s3:ListBucket
                   Resource:
                     - arn:aws:s3:::${param:s3UploadBucketName}-${self:provider.stage}
+
+    GetPresignedURLForDownloadLambdaRole:
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: get-presigned-url-for-download-lambda-role-${self:provider.stage}
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:  
+            - Effect: Allow
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action:
+                - sts:AssumeRole
+        Policies: 
+          - PolicyName: GetPresignedURLLambdaPolicy
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - s3:ListBucket
+                  Resource:
+                    - arn:aws:s3:::${param:s3UploadBucketName}-${self:provider.stage}
+                - Effect: Allow
+                  Action:
+                    - s3:GetObject
+                    - s3:HeadObject
+                  Resource:
+                    - arn:aws:s3:::${param:s3UploadBucketName}-${self:provider.stage}/*
+
 package:
   exclude:
     - .gitignore

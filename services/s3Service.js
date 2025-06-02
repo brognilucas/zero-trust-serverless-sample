@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, ListObjectsV2Command, GetObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 export class S3Service {
@@ -29,6 +29,31 @@ export class S3Service {
     });
     const response = await client.send(command);
     return (response.Contents || []).map(item => item.Key.split('/').pop());
+  }
+
+  async getDownloadPresignedUrl(email, fileName) {
+    const client = new S3Client({
+      region: process.env.AWS_REGION || 'us-east-1'
+    });
+    const bucketName = process.env.S3_UPLOAD_BUCKET_NAME;
+    const key = `${email}/${fileName}`;
+    try {
+      await client.send(new HeadObjectCommand({
+        Bucket: bucketName,
+        Key: key
+      }));
+    } catch (err) {
+      if (err.name === 'NotFound' || err.$metadata?.httpStatusCode === 404) {
+        return null;
+      }
+      throw err;
+    }
+
+    const command = new GetObjectCommand({
+      Bucket: bucketName,
+      Key: key
+    });
+    return await getSignedUrl(client, command, { expiresIn: process.env.S3_PRESIGNED_URL_EXPIRATION });
   }
 }
 
