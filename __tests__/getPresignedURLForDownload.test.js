@@ -54,10 +54,11 @@ describe('getPresignedURLForDownload', () => {
     const email = 'test@example.com';
     const fileName = 'test.txt';
     const expectedKey = `${email}/${fileName}`;
-    s3Service.putFile(email, expectedKey);
+    
+    s3Service.putFile(expectedKey, fileName);
 
     const res = await handler({ 
-      pathParameters: JSON.stringify({ fileName }),
+      pathParameters: { fileName },
       requestContext: {
         authorizer: {
           lambda: { email }
@@ -77,7 +78,7 @@ describe('getPresignedURLForDownload', () => {
     const fileName = 'test.txt';
 
     const res = await handler({ 
-      pathParameters: JSON.stringify({ fileName }),
+      pathParameters: { fileName },
       requestContext: {
         authorizer: {
           lambda: { email }

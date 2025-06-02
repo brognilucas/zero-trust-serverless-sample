@@ -36,14 +36,16 @@ class FakeS3Service {
 
   getDownloadPresignedUrl(email, fileName) {
     const key = `${email}/${fileName}`;
-    if (!this.files.has(email) || !this.files.get(email).includes(key)) {
+    const files = this.files.get(email) || [];
+    
+    if (!files.includes(fileName)) {
       return null;
     }
+
     const fakeUrl = `https://fake-s3-bucket.amazonaws.com/${key}?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Expires=300`;
     this.presignedUrls.set(key, fakeUrl);
     return fakeUrl;
   }
-
 }
 
 export default FakeS3Service; 
