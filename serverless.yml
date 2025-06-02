@@ -66,6 +66,25 @@ functions:
 
 resources:
   Resources:
+    UploadBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${param:s3UploadBucketName}-${self:provider.stage}
+        Tags:
+          - Key: Name
+            Value: ${param:s3UploadBucketName}-${self:provider.stage}
+          - Key: Description
+            Value: Confidential files upload bucket
+        PublicAccessBlockConfiguration:
+          BlockPublicAcls: true
+          BlockPublicPolicy: true
+          IgnorePublicAcls: true
+          RestrictPublicBuckets: true
+        BucketEncryption:
+          ServerSideEncryptionConfiguration:
+            - ServerSideEncryptionByDefault:
+                SSEAlgorithm: AES256
+                
     UsersTable:
       Type: AWS::DynamoDB::Table
       Properties:
