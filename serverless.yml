@@ -53,8 +53,8 @@ functions:
   authorizer:
     handler: auth/jwt-authorizer.handler
 
-  getPresignedURL:
-    handler: getPresignedURL/index.handler
+  getPresignedURLForUpload:
+    handler: getPresignedURLForUpload/index.handler
     events:
       - httpApi:
           path: /files/get-upload-url
@@ -62,7 +62,7 @@ functions:
           authorizer: 
             type: request
             name: authorizer
-    role: GetPresignedURLLambdaRole
+    role: GetPresignedURLForUploadLambdaRole
 
   getListOfUserFiles:
     handler: getFilesForUser/index.handler
@@ -204,7 +204,7 @@ resources:
                   Resource:
                     - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/MfaCodes-${self:provider.stage}
 
-    GetPresignedURLLambdaRole:
+    GetPresignedURLForUploadLambdaRole:
       Type: AWS::IAM::Role
       Properties:
         RoleName: get-presigned-url-lambda-role-${self:provider.stage}
