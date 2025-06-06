@@ -1,5 +1,3 @@
-org: lucasbrogni
-app: zero-trust-file-apis
 service: zero-trust-confidential-files-api
 
 provider:
