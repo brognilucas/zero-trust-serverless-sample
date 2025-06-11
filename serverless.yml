@@ -1,3 +1,5 @@
+org: lucasbrogni
+app: zero-trust-file-apis
 service: zero-trust-confidential-files-api
 
 provider:
@@ -11,7 +13,7 @@ provider:
     MFA_TTL_SECONDS: 300
     JWT_SECRET: ${param:jwtSecret}
     EMAIL_FROM: ${param:emailFrom}
-    S3_UPLOAD_BUCKET_NAME: ${param:s3UploadBucketName}-${self:provider.stage}
+    S3_UPLOAD_BUCKET_NAME: ${self:custom.bucketName}
     S3_PRESIGNED_URL_EXPIRATION: 300
 
   httpApi:
@@ -23,7 +25,7 @@ provider:
         enableSimpleResponses: true
 
 custom:
-  bucketName: ${param:s3UploadBucketName}-${self:provider.stage}
+  bucketName: invoices-${sls:stage}-${opt:timestamp, '12345'}
 
 functions:
   signup:
@@ -97,7 +99,7 @@ functions:
 
 resources:
   Resources:
-    UploadBucket:
+    InvoicesBucket:
       Type: AWS::S3::Bucket
       Properties:
         BucketName: ${self:custom.bucketName}
@@ -246,7 +248,7 @@ resources:
                   Action:
                     - s3:PutObject
                   Resource:
-                    - arn:aws:s3:::${param:s3UploadBucketName}-${self:provider.stage}/*
+                    - arn:aws:s3:::${self:custom.bucketName}/*
 
     GetListOfUserFilesLambdaRole:
       Type: AWS::IAM::Role
@@ -270,7 +272,7 @@ resources:
                   Action:
                     - s3:ListBucket
                   Resource:
-                    - arn:aws:s3:::${param:s3UploadBucketName}-${self:provider.stage}
+                    - arn:aws:s3:::${self:custom.bucketName}
 
     GetPresignedURLForDownloadLambdaRole:
       Type: AWS::IAM::Role
@@ -294,13 +296,13 @@ resources:
                   Action:
                     - s3:ListBucket
                   Resource:
-                    - arn:aws:s3:::${param:s3UploadBucketName}-${self:provider.stage}
+                    - arn:aws:s3:::${self:custom.bucketName}
                 - Effect: Allow
                   Action:
                     - s3:GetObject
                     - s3:HeadObject
                   Resource:
-                    - arn:aws:s3:::${param:s3UploadBucketName}-${self:provider.stage}/*
+                    - arn:aws:s3:::${self:custom.bucketName}/*
 
     ProcessInvoiceLambdaRole:
       Type: AWS::IAM::Role
@@ -325,7 +327,7 @@ resources:
                     - s3:GetObject
                     - s3:HeadObject
                   Resource:
-                    - arn:aws:s3:::${param:s3UploadBucketName}-${self:provider.stage}/*
+                    - arn:aws:s3:::${self:custom.bucketName}/*
 
 package:
   exclude:
