@@ -93,6 +93,7 @@ functions:
       - s3: 
           bucket: ${self:bucketName}
           event: s3:ObjectCreated:*
+    role: ProcessInvoiceLambdaRole
 
 resources:
   Resources:
@@ -294,6 +295,31 @@ resources:
                     - s3:ListBucket
                   Resource:
                     - arn:aws:s3:::${param:s3UploadBucketName}-${self:provider.stage}
+                - Effect: Allow
+                  Action:
+                    - s3:GetObject
+                    - s3:HeadObject
+                  Resource:
+                    - arn:aws:s3:::${param:s3UploadBucketName}-${self:provider.stage}/*
+
+    ProcessInvoiceLambdaRole:
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: process-invoice-lambda-role-${self:provider.stage}
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action:
+                - sts:AssumeRole
+        Policies:
+          - PolicyName: ProcessInvoiceLambdaPolicy
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
                 - Effect: Allow
                   Action:
                     - s3:GetObject
