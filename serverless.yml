@@ -22,6 +22,8 @@ provider:
         functionName: authorizer
         enableSimpleResponses: true
 
+custom:
+  bucketName: ${param:s3UploadBucketName}-${self:provider.stage}
 
 functions:
   signup:
@@ -84,15 +86,23 @@ functions:
             name: authorizer
     role: GetPresignedURLForDownloadLambdaRole
 
+
+  processInvoice: 
+    handler: invoiceProcessor/index.handler
+    events: 
+      - s3: 
+          bucket: ${self:bucketName}
+          event: s3:ObjectCreated:*
+
 resources:
   Resources:
     UploadBucket:
       Type: AWS::S3::Bucket
       Properties:
-        BucketName: ${param:s3UploadBucketName}-${self:provider.stage}
+        BucketName: ${self:bucketName}
         Tags:
           - Key: Name
-            Value: ${param:s3UploadBucketName}-${self:provider.stage}
+            Value: ${self:bucketName}
           - Key: Description
             Value: Confidential files upload bucket
         PublicAccessBlockConfiguration:
