@@ -91,7 +91,7 @@ functions:
     handler: invoiceProcessor/index.handler
     events: 
       - s3: 
-          bucket: ${self:bucketName}
+          bucket: ${self:custom.bucketName}
           event: s3:ObjectCreated:*
     role: ProcessInvoiceLambdaRole
 
@@ -100,10 +100,10 @@ resources:
     UploadBucket:
       Type: AWS::S3::Bucket
       Properties:
-        BucketName: ${self:bucketName}
+        BucketName: ${self:custom.bucketName}
         Tags:
           - Key: Name
-            Value: ${self:bucketName}
+            Value: ${self:custom.bucketName}
           - Key: Description
             Value: Confidential files upload bucket
         PublicAccessBlockConfiguration:
