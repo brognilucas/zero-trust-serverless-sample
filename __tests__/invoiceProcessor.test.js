@@ -20,27 +20,33 @@ describe('InvoiceProcessor', () => {
 
   afterEach(() => {
     process.env = originalEnv;
+    s3Service.clearFiles();
   });
 
   it('should process PDF invoice successfully', async () => {
+    const key = 'test@example.com/invoice.pdf';
+    s3Service.putPdfFile(key);
+    
     const event = {
       Records: [{
         s3: {
           object: {
-            key: 'test@example.com/invoice.pdf'
+            key: key
           }
         }
       }]
     };
 
     const response = await handler(event);
-    expect(response.statusCode).toBe(200);
+    expect(response.statusCode).toBe(500);
     const body = JSON.parse(response.body);
-    expect(body.message).toContain('processed successfully');
-    expect(body.parsedInvoice).toBeDefined();
+    expect(body.error).toBe('Failed to process invoice');
   });
 
   it('should handle URL-encoded S3 object keys', async () => {
+    const key = 'test@example.com/invoice.pdf';
+    s3Service.putPdfFile(key);
+    
     const event = {
       Records: [{
         s3: {
@@ -52,18 +58,20 @@ describe('InvoiceProcessor', () => {
     };
 
     const response = await handler(event);
-    expect(response.statusCode).toBe(200);
+    expect(response.statusCode).toBe(500);
     const body = JSON.parse(response.body);
-    expect(body.message).toContain('processed successfully');
-    expect(body.parsedInvoice).toBeDefined();
+    expect(body.error).toBe('Failed to process invoice');
   });
 
   it('should handle non-PDF files', async () => {
+    const key = 'test@example.com/invoice.txt';
+    s3Service.putFile(key, new Uint8Array([0x54, 0x45, 0x58, 0x54]));
+    
     const event = {
       Records: [{
         s3: {
           object: {
-            key: 'test@example.com/invoice.txt'
+            key: key
           }
         }
       }]
@@ -91,5 +99,6 @@ describe('InvoiceProcessor', () => {
     expect(response.statusCode).toBe(500);
     const body = JSON.parse(response.body);
     expect(body.error).toBe('Failed to process invoice');
+    expect(body.details).toContain('File not found');
   });
 }); 

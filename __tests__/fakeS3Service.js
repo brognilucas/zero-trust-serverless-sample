@@ -27,6 +27,17 @@ class FakeS3Service {
     this.files.set(key, file);
   }
 
+  putPdfFile(key) {
+    // Create a fake PDF file with PDF magic number and some content
+    const pdfContent = new Uint8Array([
+      0x25, 0x50, 0x44, 0x46, // %PDF
+      0x2D, 0x31, 0x2E, 0x34, // -1.4
+      0x0A, 0x25, 0xE2, 0xE3, // ... (PDF header)
+      0xCF, 0xD3, 0x0A, 0x0A  // ... (PDF header)
+    ]);
+    this.files.set(key, pdfContent);
+  }
+
   getFiles(email) {
     return Array.from(this.files.entries())
       .filter(([key]) => key.startsWith(`${email}/`))
