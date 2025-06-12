@@ -53,7 +53,6 @@ export class DatabaseService {
 
     try {
       await this.client.send(new PutItemCommand(params));
-      return this.unmarshallDynamoItem(params.Item);
     } catch (error) {
       if (error.name === 'ConditionalCheckFailedException') {
         throw new Error('Invoice with this ID already exists');
