@@ -55,23 +55,12 @@ class FakeS3Service {
     return fakeUrl;
   }
 
-  async extractTextFromPdf(key) {
+  async getFile(key) {
     const file = this.files.get(key);
     if (!file) {
-      throw new Error('Failed to extract text from PDF: File not found');
+      throw new Error('File not found');
     }
-
-    const isPdf = file.length > 4 && 
-      file[0] === 0x25 && // %
-      file[1] === 0x50 && // P
-      file[2] === 0x44 && // D
-      file[3] === 0x46;   // F
-
-    if (!isPdf) {
-      throw new Error('File is not a PDF');
-    }
-
-    return 'This is a test PDF content';
+    return { buffer: file };
   }
 }
 

@@ -77,13 +77,21 @@ Terms: Net 30`;
       };
 
       global.fetch.mockResolvedValueOnce({
+        ok: true,
         json: () => Promise.resolve({
           candidates: [{
             content: {
               parts: [{ text: JSON.stringify(expectedFormat) }]
             }
           }]
-        })
+        }),
+        text: () => Promise.resolve(JSON.stringify({
+          candidates: [{
+            content: {
+              parts: [{ text: JSON.stringify(expectedFormat) }]
+            }
+          }]
+        }))
       });
 
       const result = await geminiService.parseInvoice(mockInvoiceText);
@@ -92,12 +100,15 @@ Terms: Net 30`;
 
     it('should throw an error when API response is invalid', async () => {
       global.fetch.mockResolvedValueOnce({
-        json: () => Promise.resolve({ candidates: [] })
+        ok: false,
+        status: 400,
+        json: () => Promise.resolve({ candidates: [] }),
+        text: () => Promise.resolve(JSON.stringify({ candidates: [] }))
       });
 
       await expect(geminiService.parseInvoice(mockInvoiceText))
         .rejects
-        .toThrow('Failed to get a valid response from Gemini API.');
+        .toThrow('Gemini API request failed with status 400');
     });
   });
 
