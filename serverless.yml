@@ -13,8 +13,11 @@ provider:
     MFA_TTL_SECONDS: 300
     JWT_SECRET: ${param:jwtSecret}
     EMAIL_FROM: ${param:emailFrom}
-    S3_UPLOAD_BUCKET_NAME: ${self:custom.bucketName}
+    S3_UPLOAD_BUCKET_NAME: ${param:s3UploadBucketName}-${self:provider.stage}
     S3_PRESIGNED_URL_EXPIRATION: 300
+    GEMINI_API_KEY: ${param:geminiApiKey}
+    GEMINI_API_URL: ${param:geminiApiURL}
+    INVOICES_TABLE_NAME: Invoices-${self:provider.stage}
 
   httpApi:
     authorizers:
@@ -23,9 +26,6 @@ provider:
         identitySource: "$request.header.Authorization"
         functionName: authorizer
         enableSimpleResponses: true
-
-custom:
-  bucketName: invoices-${sls:stage}-${opt:timestamp, '12345'}
 
 functions:
   signup:
@@ -88,36 +88,16 @@ functions:
             name: authorizer
     role: GetPresignedURLForDownloadLambdaRole
 
-
-  processInvoice: 
+  processInvoiceS3:
     handler: invoiceProcessor/index.handler
     events: 
       - s3: 
-          bucket: ${self:custom.bucketName}
+          bucket: ${param:s3UploadBucketName}-${self:provider.stage}
           event: s3:ObjectCreated:*
     role: ProcessInvoiceLambdaRole
 
 resources:
-  Resources:
-    InvoicesBucket:
-      Type: AWS::S3::Bucket
-      Properties:
-        BucketName: ${self:custom.bucketName}
-        Tags:
-          - Key: Name
-            Value: ${self:custom.bucketName}
-          - Key: Description
-            Value: Confidential files upload bucket
-        PublicAccessBlockConfiguration:
-          BlockPublicAcls: true
-          BlockPublicPolicy: true
-          IgnorePublicAcls: true
-          RestrictPublicBuckets: true
-        BucketEncryption:
-          ServerSideEncryptionConfiguration:
-            - ServerSideEncryptionByDefault:
-                SSEAlgorithm: AES256
-                
+  Resources:                
     UsersTable:
       Type: AWS::DynamoDB::Table
       Properties:
@@ -248,7 +228,7 @@ resources:
                   Action:
                     - s3:PutObject
                   Resource:
-                    - arn:aws:s3:::${self:custom.bucketName}/*
+                    - arn:aws:s3:::${param:s3UploadBucketName}-${self:provider.stage}/*
 
     GetListOfUserFilesLambdaRole:
       Type: AWS::IAM::Role
@@ -272,7 +252,7 @@ resources:
                   Action:
                     - s3:ListBucket
                   Resource:
-                    - arn:aws:s3:::${self:custom.bucketName}
+                    - arn:aws:s3:::${param:s3UploadBucketName}-${self:provider.stage}
 
     GetPresignedURLForDownloadLambdaRole:
       Type: AWS::IAM::Role
@@ -296,38 +276,79 @@ resources:
                   Action:
                     - s3:ListBucket
                   Resource:
-                    - arn:aws:s3:::${self:custom.bucketName}
+                    - arn:aws:s3:::${param:s3UploadBucketName}-${self:provider.stage}
                 - Effect: Allow
                   Action:
                     - s3:GetObject
                     - s3:HeadObject
                   Resource:
-                    - arn:aws:s3:::${self:custom.bucketName}/*
+                    - arn:aws:s3:::${param:s3UploadBucketName}-${self:provider.stage}/*
 
-    ProcessInvoiceLambdaRole:
+    InvoicesTable: 
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: Invoices-${self:provider.stage}
+        AttributeDefinitions:
+          - AttributeName: invoiceId
+            AttributeType: S
+          - AttributeName: date
+            AttributeType: S
+        KeySchema:
+          - AttributeName: invoiceId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: DateIndex
+            KeySchema:
+              - AttributeName: date
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+        BillingMode: PAY_PER_REQUEST
+
+
+    ProcessInvoiceLambdaRole: 
       Type: AWS::IAM::Role
       Properties:
-        RoleName: process-invoice-lambda-role-${self:provider.stage}
+        RoleName: ProcessInvoiceLambdaRole-${self:provider.stage}
         AssumeRolePolicyDocument:
           Version: "2012-10-17"
-          Statement:
+          Statement:  
             - Effect: Allow
               Principal:
                 Service:
                   - lambda.amazonaws.com
               Action:
                 - sts:AssumeRole
-        Policies:
+        Policies: 
           - PolicyName: ProcessInvoiceLambdaPolicy
             PolicyDocument:
               Version: "2012-10-17"
               Statement:
                 - Effect: Allow
                   Action:
-                    - s3:GetObject
-                    - s3:HeadObject
+                    - s3:ListBucket
                   Resource:
-                    - arn:aws:s3:::${self:custom.bucketName}/*
+                    - arn:aws:s3:::${param:s3UploadBucketName}-${self:provider.stage}
+                - Effect: Allow
+                  Action:
+                    - s3:GetObject 
+                  Resource:
+                    - arn:aws:s3:::${param:s3UploadBucketName}-${self:provider.stage}/*
+                - Effect: Allow
+                  Action:
+                    - dynamodb:PutItem
+                    - dynamodb:UpdateItem
+                  Resource:
+                    - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/Invoices-${self:provider.stage}
+                    - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/Invoices-${self:provider.stage}/index/*
+                - Effect: Allow
+                  Action:
+                    - logs:CreateLogGroup
+                    - logs:CreateLogStream
+                    - logs:PutLogEvents
+                  Resource:
+                    - arn:aws:logs:${aws:region}:${aws:accountId}:log-group:/aws/lambda/zero-trust-confidential-files-api-${self:provider.stage}-processInvoiceS3:*:*
+            
 
 package:
   exclude:

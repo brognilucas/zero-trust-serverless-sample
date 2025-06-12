@@ -24,27 +24,43 @@ class FakeS3Service {
   }
 
   putFile(key, file) {
-    const email = key.split('/')[0];
-    const files = this.files.get(email) || [];
-    files.push(file);
-    this.files.set(email, files);
+    this.files.set(key, file);
   }
 
   getFiles(email) {
-    return this.files.get(email) || [];
+    return Array.from(this.files.entries())
+      .filter(([key]) => key.startsWith(`${email}/`))
+      .map(([key]) => key.split('/').pop());
   }
 
   getDownloadPresignedUrl(email, fileName) {
     const key = `${email}/${fileName}`;
-    const files = this.files.get(email) || [];
-    
-    if (!files.includes(fileName)) {
+    if (!this.files.has(key)) {
       return null;
     }
 
     const fakeUrl = `https://fake-s3-bucket.amazonaws.com/${key}?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Expires=300`;
     this.presignedUrls.set(key, fakeUrl);
     return fakeUrl;
+  }
+
+  async extractTextFromPdf(key) {
+    const file = this.files.get(key);
+    if (!file) {
+      throw new Error('Failed to extract text from PDF: File not found');
+    }
+
+    const isPdf = file.length > 4 && 
+      file[0] === 0x25 && // %
+      file[1] === 0x50 && // P
+      file[2] === 0x44 && // D
+      file[3] === 0x46;   // F
+
+    if (!isPdf) {
+      throw new Error('File is not a PDF');
+    }
+
+    return 'This is a test PDF content';
   }
 }
 
