@@ -7,11 +7,9 @@ export const createHandler = (s3Service = new S3Service(), llmService = new Gemi
     console.log("Received event:", JSON.stringify(event, null, 2));
 
     try {
-      const file = decodeURIComponent(event.Records[0].s3.object.key);
-      const text = await s3Service.extractTextFromPdf(file);
-      console.log("Extracted text from PDF:", text);
-
-      const invoiceJson = await llmService.parseInvoice(text);
+      const key = decodeURIComponent(event.Records[0].s3.object.key);
+      const {buffer} = await s3Service.getFile(key);
+      const invoiceJson = await llmService.parseInvoice(buffer);
 
       console.log("INVOICE parsed to JSON:", invoiceJson);
 

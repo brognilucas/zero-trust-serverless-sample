@@ -1,22 +1,23 @@
 export class GeminiService {
 
-  async parseInvoice(text) {
+  async parseInvoice(file) {
     const apiUrl = process.env.GEMINI_API_URL;
     const apiKey = process.env.GEMINI_API_KEY;
 
     const url = `${apiUrl}${apiKey}`;
 
     let chatHistory = [];
+
     chatHistory.push({
       role: "user",
       parts: [{
-        text: `You are an invoice parser bot. Parse the following invoice text into a JSON object with the exact structure shown below. Ensure all fields match the format exactly and no null values are present:
+        text: `You are an invoice parser bot. Parse the following invoice into a JSON object with the exact structure shown below. Ensure all fields match the format exactly and no null values are present:
 
 {
     "invoiceId": "string",
     "date": "string (MM/DD/YYYY)",
     "dueDate": "string (MM/DD/YYYY)",
-    "customer": { 
+    "customer": {
       "name": "string",
       "address": "string",
       "email": "string",
@@ -34,8 +35,8 @@ export class GeminiService {
             "amount": number
         }
     ],
-    "totalTaxAmount": number
-    "vatRate": number
+    "totalTaxAmount": number,
+    "vatRate": number,
     "totalAmount": number,
     "company": {
         "name": "string",
@@ -45,13 +46,20 @@ export class GeminiService {
     "terms": "string"
 }
 
-For null values, return an empty string instead. Numbers use 0 as default. 
-
-Here is the invoice text to parse:
-${text}`
+For null values, return an empty string instead. Numbers use 0 as default.
+`
       }]
     });
 
+    const base64EncodedFile = file.toString('base64');
+
+    chatHistory[0].parts.push({
+      inlineData: {
+        mimeType: 'application/pdf',
+        data: base64EncodedFile
+      }
+    });
+    
     const payload = { contents: chatHistory };
 
     const response = await fetch(url, {
@@ -59,6 +67,12 @@ ${text}`
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error(`Gemini API error: ${response.status} - ${errorBody}`);
+      throw new Error(`Gemini API request failed with status ${response.status}`);
+    }
 
     const result = await response.json();
 
@@ -76,7 +90,7 @@ ${text}`
     try {
       const cleanJson = jsonString
         .replace(/```json\n?/, '')
-        .replace(/```\n?/, '')    
+        .replace(/```\n?/, '')
         .trim();
 
       const invoiceObject = JSON.parse(cleanJson);
