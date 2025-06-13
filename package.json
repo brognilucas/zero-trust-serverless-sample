@@ -21,6 +21,7 @@
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.2",
     "jsonwebtoken": "^9.0.2",
+    "pdf2json": "^3.1.4",
     "resend": "^4.5.1"
   }
 }

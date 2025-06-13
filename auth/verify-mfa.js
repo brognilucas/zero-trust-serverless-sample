@@ -18,7 +18,7 @@ export const createHandler = (database = new DatabaseService()) => {
       if (!record || record.mfaCode !== code) {
         return {
           statusCode: 401,
-          body: JSON.stringify({ message: 'Invalid code', actualCode: record.mfaCode, sentCode: code }),
+          body: JSON.stringify({ message: 'Invalid code' }),
         };
       }
 

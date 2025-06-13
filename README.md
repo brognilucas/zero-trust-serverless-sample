@@ -1,6 +1,17 @@
-# Zero Trust Confidential Files API
+# Zero Trust Confidential Files API & Invoice Processor
 
-A secure, serverless API implementation following Zero Trust Architecture principles for handling confidential files. This project demonstrates how to build a secure file handling system using AWS Lambda and API Gateway with the Serverless Framework, implementing strict security controls and zero-trust principles.
+A secure, serverless API implementation following Zero Trust Architecture principles for handling confidential files and automated invoice processing. This project demonstrates how to build a secure file handling system with AI-powered invoice processing using AWS Lambda, API Gateway, and Gemini AI, implementing strict security controls and zero-trust principles.
+
+## Project Overview
+
+This API provides a secure way to handle confidential files and process invoices with the following key features:
+
+- **Secure File Management**: Upload, download, and list confidential files with end-to-end encryption
+- **AI-Powered Invoice Processing**: Automated invoice processing using Google's Gemini AI for intelligent data extraction
+- **Multi-Factor Authentication**: Mandatory MFA for all users to ensure secure access
+- **Zero Trust Security**: Every request is verified and authenticated, regardless of its source
+- **Serverless Architecture**: Built on AWS Lambda for scalability and cost-effectiveness
+- **Email Notifications**: Secure email notifications using Resend API for important events
 
 ## Zero Trust Architecture Principles
 
@@ -33,6 +44,7 @@ The system is built using:
 - Node.js 20.x or later
 - AWS CLI configured with appropriate credentials
 - Serverless Framework installed globally
+- Google Gemini API key for invoice processing
 
 ## Installation
 
@@ -49,6 +61,8 @@ npm install
    - `jwtSecret`: Secret key for JWT token generation
    - `emailFrom`: Email address for sending notifications
    - `s3UploadBucketName`: Base name for the S3 bucket (will be appended with stage)
+   - `geminiApiKey`: API key for Google's Gemini AI service
+   - `geminiApiURL`: URL for Gemini AI API endpoint
 4. Update the `serverless.yml` with your specific requirements
 
 ## Deployment
@@ -76,7 +90,7 @@ The API provides the following secure endpoints:
 - `GET /files/list` - Get List of files uploaded by the user (requires authentication)
 - `GET /files/get-download-url/{fileName}` - Get a presigned URL for download the file (requires authentication)
 
-All endpoints require proper authentication and authorization.
+The system automatically processes invoices when they are uploaded to the S3 bucket, using Gemini AI for intelligent data extraction and storage.
 
 ## Security Best Practices
 

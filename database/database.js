@@ -8,6 +8,59 @@ export class DatabaseService {
     });
   }
 
+  async createInvoice(invoice) {
+    if (!invoice || !invoice.invoiceId) {
+      throw new Error('Invalid invoice data: invoiceId and email are required');
+    }
+
+    const params = {
+      TableName: process.env.INVOICES_TABLE_NAME,
+      Item: {
+        invoiceId: { S: invoice.invoiceId },
+        date: { S: invoice.date },
+        dueDate: { S: invoice.dueDate },
+        customer: { M: {
+          name: { S: invoice.customer.name },
+          address: { S: invoice.customer.address },
+          email: { S: invoice.customer.email }
+        }},
+        shipTo: { M: {
+          name: { S: invoice.shipTo.name },
+          address: { S: invoice.shipTo.address }
+        }},
+        items: { L: invoice.items.map(item => ({
+          M: {
+            date: { S: item.date },
+            description: { S: item.description },
+            quantity: { N: item.quantity.toString() },
+            rate: { N: item.rate.toString() },
+            amount: { N: item.amount.toString() }
+          }
+        }))},
+        totalTaxAmount: { N: invoice.totalTaxAmount.toString() },
+        vatRate: { N: invoice.vatRate.toString() },
+        totalAmount: { N: invoice.totalAmount.toString() },
+        company: { M: {
+          name: { S: invoice.company.name },
+          address: { S: invoice.company.address },
+          email: { S: invoice.company.email }
+        }},
+        terms: { S: invoice.terms },
+        createdAt: { S: new Date().toISOString() }
+      },
+      ConditionExpression: 'attribute_not_exists(invoiceId)'
+    };
+
+    try {
+      await this.client.send(new PutItemCommand(params));
+    } catch (error) {
+      if (error.name === 'ConditionalCheckFailedException') {
+        throw new Error('Invoice with this ID already exists');
+      }
+      throw error;
+    }
+  }
+
   async createUser(email, passwordHash) {
     const params = {
       TableName: process.env.USER_TABLE_NAME,
@@ -28,7 +81,7 @@ export class DatabaseService {
       Key: { email: { S: email } }
     };
     const result = await this.client.send(new GetItemCommand(params));
-    return result.Item ? this.unmarshallDynamoItem(result.Item) : null;
+    return result.Item ? this.#unmarshallDynamoItem(result.Item) : null;
   }
 
   async setMfaCode(email, mfaCode) {
@@ -50,7 +103,7 @@ export class DatabaseService {
       Key: { email: { S: email } },
     };
     const result = await this.client.send(new GetItemCommand(params));
-    return result.Item ? this.unmarshallDynamoItem(result.Item) : null;
+    return result.Item ? this.#unmarshallDynamoItem(result.Item) : null;
   }
 
   async deleteMfaCode(email) {
@@ -61,7 +114,7 @@ export class DatabaseService {
     await this.client.send(new DeleteItemCommand(params));
   }
 
-  unmarshallDynamoItem(item) {
+  #unmarshallDynamoItem(item) {
     if (!item) return null;
     
     const result = {};
