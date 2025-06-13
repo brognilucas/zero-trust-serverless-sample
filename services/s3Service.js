@@ -70,7 +70,7 @@ export class S3Service {
 
     try {
       const response = await client.send(command);
-      const buffer = this.#mapS3BodyToBuffer(response.Body);
+      const buffer = await this.#mapS3BodyToBuffer(response.Body);
       return {
         buffer: buffer,
         mimeType: response.ContentType
