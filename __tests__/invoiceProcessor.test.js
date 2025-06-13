@@ -87,4 +87,27 @@ describe('InvoiceProcessor', () => {
     expect(body.error).toBe('Failed to process invoice');
     expect(body.details).toContain('File not found');
   });
+
+  it('should abort if upload is not an invoice', async () => {
+    const key = 'test@example.com/not-an-invoice.pdf';
+    s3Service.putPdfFile(key);
+    
+    const event = {
+      Records: [{
+        s3: {
+          object: {
+            key: key
+          }
+        }
+      }]
+    };
+
+    jest.spyOn(llmService, 'parseInvoice').mockRejectedValueOnce(new Error('Uploaded file is not an invoice'));
+
+    const response = await handler(event);
+    expect(response.statusCode).toBe(500);
+    const body = JSON.parse(response.body);
+    expect(body.error).toBe('Failed to process invoice');
+    expect(body.details).toContain('Uploaded file is not an invoice');
+  });
 }); 

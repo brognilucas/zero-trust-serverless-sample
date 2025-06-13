@@ -1,5 +1,9 @@
 export class GeminiService {
-  mapToInvoicePrompt = `You are an invoice parser bot. Parse the following invoice into a JSON object with the exact structure shown below. Ensure all fields match the format exactly and no null values are present:
+  #mapToInvoicePrompt = `You are an invoice parser bot. 
+  
+  if you identify the file is not an invoice says the specific phrase "NOT AN INVOICE"
+
+  If it's an invoice parse the following invoice into a JSON object with the exact structure shown below. Ensure all fields match the format exactly and no null values are present:
   
   {
       "invoiceId": "string",
@@ -35,10 +39,19 @@ export class GeminiService {
   }
   
   For null values, return an empty string instead. Numbers use 0 as default.
+
+  if you identify the file is not an invoice, return empty.
   `;
 
   constructor() {
 
+  }
+
+
+  #notAnInvoiceText = 'NOT AN INVOICE';
+
+  #isInvoice(text) { 
+    return text !== this.#notAnInvoiceText;
   }
 
   #isValidResponse(result) {
@@ -62,7 +75,7 @@ export class GeminiService {
     const chatHistory = [{
       role: "user",
       parts: [
-        { text: this.mapToInvoicePrompt },
+        { text: this.#mapToInvoicePrompt },
         {
           inlineData: {
             mimeType: 'application/pdf',
@@ -92,8 +105,13 @@ export class GeminiService {
       console.error("Gemini API response did not contain expected content structure:", result);
       throw new Error("Failed to get a valid response from Gemini API.");
     }
+    const text = result.candidates[0].content.parts[0].text;
+    
+    if (!this.#isInvoice(text)){ 
+        throw new Error("Uploaded file is not an invoice")
+    }
 
-    return this.parseInvoiceToObject(result.candidates[0].content.parts[0].text);
+    return this.parseInvoiceToObject(text);
   }
 
   async parseInvoiceToObject(jsonString) {
