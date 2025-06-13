@@ -1,6 +1,5 @@
 import { S3Client, PutObjectCommand, ListObjectsV2Command, GetObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-
 export class S3Service {
   constructor() {
   }
@@ -31,7 +30,7 @@ export class S3Service {
     return (response.Contents || []).map(item => item.Key.split('/').pop());
   }
 
-  async getDownloadPresignedUrl(email, fileName) {
+  async getDownloadPresignedUrl(key) {
     const client = new S3Client({
       region: process.env.AWS_REGION || 'us-east-1'
     });
@@ -42,7 +41,7 @@ export class S3Service {
         Bucket: bucketName,
         Key: key
       });
-  
+
       await client.send(command);
     } catch (err) {
       if (err.name === 'NotFound' || err.$metadata?.httpStatusCode === 404) {
@@ -57,6 +56,7 @@ export class S3Service {
     });
     return await getSignedUrl(client, command, { expiresIn: process.env.S3_PRESIGNED_URL_EXPIRATION });
   }
+
   async getFile(key) {
     console.log("Fetching object from key " + key);
     const client = new S3Client({
@@ -64,23 +64,13 @@ export class S3Service {
     });
     const bucketName = process.env.S3_UPLOAD_BUCKET_NAME;
     const command = new GetObjectCommand({
-      Bucket: bucketName, 
+      Bucket: bucketName,
       Key: key
     });
 
     try {
       const response = await client.send(command);
-
-      const chunks = [];
-      if (response.Body) {
-        for await (const chunk of response.Body) {
-          chunks.push(chunk);
-        }
-      } else {
-        throw new Error(`S3 object body was empty for key: ${key}`);
-      }
-
-      const buffer = Buffer.concat(chunks);
+      const buffer = this.#mapS3BodyToBuffer(response.Body);
       return {
         buffer: buffer,
         mimeType: response.ContentType
@@ -91,5 +81,17 @@ export class S3Service {
     }
   }
 
+  async #mapS3BodyToBuffer(body) {
+    const chunks = [];
+    if (body) {
+      for await (const chunk of body) {
+        chunks.push(chunk);
+      }
+    } else {
+      throw new Error(`S3 object body was empty for key: ${key}`);
+    }
+    const buffer = Buffer.concat(chunks);
+    return buffer
+  }
 }
 

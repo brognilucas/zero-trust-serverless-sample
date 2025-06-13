@@ -81,7 +81,7 @@ export class DatabaseService {
       Key: { email: { S: email } }
     };
     const result = await this.client.send(new GetItemCommand(params));
-    return result.Item ? this.unmarshallDynamoItem(result.Item) : null;
+    return result.Item ? this.#unmarshallDynamoItem(result.Item) : null;
   }
 
   async setMfaCode(email, mfaCode) {
@@ -103,7 +103,7 @@ export class DatabaseService {
       Key: { email: { S: email } },
     };
     const result = await this.client.send(new GetItemCommand(params));
-    return result.Item ? this.unmarshallDynamoItem(result.Item) : null;
+    return result.Item ? this.#unmarshallDynamoItem(result.Item) : null;
   }
 
   async deleteMfaCode(email) {
@@ -114,7 +114,7 @@ export class DatabaseService {
     await this.client.send(new DeleteItemCommand(params));
   }
 
-  unmarshallDynamoItem(item) {
+  #unmarshallDynamoItem(item) {
     if (!item) return null;
     
     const result = {};

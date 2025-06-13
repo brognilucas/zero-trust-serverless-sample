@@ -10,7 +10,6 @@ export const createHandler = (s3Service = new S3Service(), llmService = new Gemi
       const key = decodeURIComponent(event.Records[0].s3.object.key);
       const {buffer} = await s3Service.getFile(key);
       const invoiceJson = await llmService.parseInvoice(buffer);
-
       console.log("INVOICE parsed to JSON:", invoiceJson);
 
       await database.createInvoice(invoiceJson); 
